@@ -12,12 +12,23 @@
 ```
 
 **环境变量配置提示:**
-在 `application.yml` 中预留以下配置项：
+在 `application.properties` 中预留以下配置项：
 
-* `cloudflare.imgbed.url`: 图床 API 地址
-* `cloudflare.imgbed.token`: 图床上传凭证 Token
-* `ai.llm.url`: 大模型 API 地址 (如兼容 OpenAI 格式的地址)
-* `ai.llm.apikey`: 大模型 API Key
+```properties
+cloudflare.r2.endpoint: https://<你的账户Account_ID>.r2.cloudflarestorage.com
+cloudflare.r2.access-key: 你的访问密钥_Access_Key_ID
+cloudflare.r2.secret-key: 你的机密访问密钥_Secret_Access_Key
+cloudflare.r2.bucket-name: magic-bean
+# R2 兼容 S3，但没有传统意义的地域，填 auto 即可。如果某些旧版 SDK 报错，可换成 us-east-1
+cloudflare.r2.region: auto 
+# 用来拼接返回给前端的图片 URL 的基础域名
+#cloudflare.r2.domain: https://你选择的域名
+
+# DashScope
+alibaba.ai.api-key: 大模型 API Key
+alibaba.ai.vision-model: 大模型视觉分析的模型名称（如 qwen-vl-plus）
+alibaba.ai.default-plant-prompt: 默认的植物诊断提示词（System Prompt）
+```
 
 ---
 
@@ -83,13 +94,13 @@ App 端传入图片 URL 和可选的提示词，后端组装大模型格式的 P
 
 **预设数据库表结构 (PlantRecord):**
 
-* `id` (主键, 自增/雪花算法)
-* `device_id` (设备标识符)
-* `timestamp` (数据产生的时间戳)
-* `temperature` (温度)
-* `humidity` (湿度)
-* `image_url` (图床直链，可为空)
-* `note` (用户手记，可为空)
+* `id` (主键, 自增/雪花算法):`bigint`
+* `device_id` (设备标识符):`varchar(128)`
+* `timestamp` (数据产生的时间戳):`bigint`
+* `temperature` (温度):`double`
+* `humidity` (湿度):`double`
+* `image_url` (图床直链，可为空):`varchar(1024)`
+* `note` (用户手记，可为空):`text`
 
 **3.1 上行同步 (Push Data)**
 
