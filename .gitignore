@@ -32,4 +32,4 @@ hs_err_pid*
 replay_pid*
 
 # Application local config
-src/main/resources/application.properties
+src/main/resources/application-local.properties
