@@ -24,28 +24,45 @@ public class DiaryService {
     }
 
     /**
-     * 获取手记画廊列表（精简版，只返回 id 和 imageUrl）
+     * 获取手记画廊列表（分页，只返回 id 和 imageUrl）
      * 按 timestamp 倒序排列，过滤掉已删除的记录
      *
      * @param deviceId 设备 ID
-     * @param limit    返回记录条数，默认 20
-     * @return 手记列表响应
+     * @param page     页码（从 1 开始）
+     * @param pageSize 每页条数
+     * @return 手记列表响应（含分页信息）
      */
-    public DiaryListResponse getDiaryList(String deviceId, int limit) {
+    public DiaryListResponse getDiaryList(String deviceId, int page, int pageSize) {
+        // 查询总记录数
+        Long total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM plant_diary WHERE device_id = ? AND (is_deleted IS NULL OR is_deleted = 0)",
+                Long.class,
+                deviceId
+        );
+        total = total != null ? total : 0L;
+
+        // 计算总页数
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+
+        // 计算偏移量
+        int offset = (page - 1) * pageSize;
+
+        // 分页查询
         List<DiaryListResponse.DiaryRecord> records = jdbcTemplate.query(
                 "SELECT id, image_url FROM plant_diary " +
                         "WHERE device_id = ? AND (is_deleted IS NULL OR is_deleted = 0) " +
                         "ORDER BY timestamp DESC " +
-                        "LIMIT ?",
+                        "LIMIT ? OFFSET ?",
                 (rs, rowNum) -> new DiaryListResponse.DiaryRecord(
                         rs.getLong("id"),
                         rs.getString("image_url")
                 ),
                 deviceId,
-                limit
+                pageSize,
+                offset
         );
 
-        return new DiaryListResponse(records);
+        return new DiaryListResponse(records, total, page, pageSize, totalPages);
     }
 
     /**
@@ -84,6 +101,79 @@ public class DiaryService {
                 id
         );
         return updated > 0;
+    }
+
+    /**
+     * 软删除手记
+     * 将 is_deleted 字段设置为 1
+     *
+     * @param id 记录主键 ID
+     * @return 删除是否成功
+     */
+    @Transactional
+    public boolean deleteDiary(Long id) {
+        int updated = jdbcTemplate.update(
+                "UPDATE plant_diary SET is_deleted = 1, update_time = NOW() WHERE id = ?",
+                id
+        );
+        return updated > 0;
+    }
+
+    /**
+     * 恢复已删除的手记
+     * 将 is_deleted 字段设置为 0
+     *
+     * @param id 记录主键 ID
+     * @return 恢复是否成功
+     */
+    @Transactional
+    public boolean restoreDiary(Long id) {
+        int updated = jdbcTemplate.update(
+                "UPDATE plant_diary SET is_deleted = 0, update_time = NOW() WHERE id = ?",
+                id
+        );
+        return updated > 0;
+    }
+
+    /**
+     * 获取回收站列表（已删除的记录）
+     *
+     * @param deviceId 设备 ID
+     * @param page     页码（从 1 开始）
+     * @param pageSize 每页条数
+     * @return 手记列表响应（含分页信息）
+     */
+    public DiaryListResponse getTrashList(String deviceId, int page, int pageSize) {
+        // 查询已删除的总记录数
+        Long total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM plant_diary WHERE device_id = ? AND is_deleted = 1",
+                Long.class,
+                deviceId
+        );
+        total = total != null ? total : 0L;
+
+        // 计算总页数
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+
+        // 计算偏移量
+        int offset = (page - 1) * pageSize;
+
+        // 分页查询已删除的记录
+        List<DiaryListResponse.DiaryRecord> records = jdbcTemplate.query(
+                "SELECT id, image_url FROM plant_diary " +
+                        "WHERE device_id = ? AND is_deleted = 1 " +
+                        "ORDER BY update_time DESC " +
+                        "LIMIT ? OFFSET ?",
+                (rs, rowNum) -> new DiaryListResponse.DiaryRecord(
+                        rs.getLong("id"),
+                        rs.getString("image_url")
+                ),
+                deviceId,
+                pageSize,
+                offset
+        );
+
+        return new DiaryListResponse(records, total, page, pageSize, totalPages);
     }
 
     /**
