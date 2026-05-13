@@ -7,9 +7,6 @@ import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.zone.ZoneRulesException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,27 +51,24 @@ public class SensorService {
 
     /**
      * 拉取历史传感器数据 (图表数据源)
-     * 默认仅查询用户时区的"今日"数据
+     * 默认仅查询今日数据（使用 create_time 字段判断）
      *
      * @param deviceId  设备 ID
-     * @param startTime 查询起始时间戳 (毫秒)，可选
-     * @param endTime   查询结束时间戳 (毫秒)，可选
-     * @param timezone  用户所在时区 (如 "Asia/Shanghai")
+     * @param startTime 查询起始时间戳 (秒级)，可选
+     * @param endTime   查询结束时间戳 (秒级)，可选
      * @return 历史数据响应
      */
-    public HistoryDataResponse getHistoryData(String deviceId, Long startTime, Long endTime, String timezone) {
+    public HistoryDataResponse getHistoryData(String deviceId, Long startTime, Long endTime) {
         StringBuilder sql = new StringBuilder(
                 "SELECT id, timestamp, temperature, air_humidity, dirt_humidity FROM plant_data WHERE device_id = ?"
         );
         List<Object> params = new ArrayList<>();
         params.add(deviceId);
 
-        // 如果未指定时间范围，默认查询用户时区的"今日"数据
+        // 如果未指定时间范围，默认查询今日数据
         if (startTime == null && endTime == null) {
-            // 获取用户时区今日 0 点的时间戳
-            long todayStart = getTodayStartTimestamp(timezone);
-            sql.append(" AND timestamp >= ?");
-            params.add(todayStart);
+            // 使用 create_time 字段查询今日数据
+            sql.append(" AND DATE(create_time) = CURDATE()");
         } else {
             if (startTime != null) {
                 sql.append(" AND timestamp >= ?");
@@ -95,31 +89,6 @@ public class SensorService {
         );
 
         return new HistoryDataResponse(records);
-    }
-
-    /**
-     * 获取指定时区当天 0 点的时间戳 (毫秒)
-     * 使用 java.time API，确保跨平台一致性
-     *
-     * @param timezone 时区 ID，如 "Asia/Shanghai"、"America/New_York"
-     * @return 当天 0 点的毫秒级时间戳
-     */
-    private long getTodayStartTimestamp(String timezone) {
-        try {
-            // 解析时区（如果无效会抛出 ZoneRulesException）
-            ZoneId zoneId = ZoneId.of(timezone);
-
-            // 获取该时区的今日日期
-            LocalDate today = LocalDate.now(zoneId);
-
-            // 转换为该时区今日 0 点的时间戳
-            return today.atStartOfDay(zoneId).toInstant().toEpochMilli();
-        } catch (ZoneRulesException e) {
-            // 时区无效时，使用系统默认时区
-            ZoneId defaultZone = ZoneId.systemDefault();
-            LocalDate today = LocalDate.now(defaultZone);
-            return today.atStartOfDay(defaultZone).toInstant().toEpochMilli();
-        }
     }
 
     /**

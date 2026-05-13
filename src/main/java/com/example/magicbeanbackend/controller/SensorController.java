@@ -40,21 +40,19 @@ public class SensorController {
     /**
      * 拉取历史传感器数据 (图表数据源)
      * 用于 App 绘制环境温湿度趋势折线图
-     * 若不传 startTime 和 endTime，默认查询用户时区的"今日"数据
+     * 若不传 startTime 和 endTime，默认查询今日数据
      *
      * @param deviceId  设备 ID
      * @param startTime 查询起始时间戳 (毫秒)，可选
      * @param endTime   查询结束时间戳 (毫秒)，可选
-     * @param timezone  用户所在时区 (如 "Asia/Shanghai")，可选，默认为系统时区
      * @return 历史数据响应
      */
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<HistoryDataResponse>> getHistoryData(
             @RequestParam String deviceId,
             @RequestParam(required = false) Long startTime,
-            @RequestParam(required = false) Long endTime,
-            @RequestParam(required = false, defaultValue = "Asia/Shanghai") String timezone) {
-        HistoryDataResponse response = sensorService.getHistoryData(deviceId, startTime, endTime, timezone);
+            @RequestParam(required = false) Long endTime) {
+        HistoryDataResponse response = sensorService.getHistoryData(deviceId, startTime, endTime);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
