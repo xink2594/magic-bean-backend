@@ -26,7 +26,7 @@ public class SensorService {
     /**
      * 获取设备最新状态与实时数据 (Device Shadow)
      * 1. 查询 plant_status 表获取设备在线状态
-     * 2. 查询 plant_data 表获取最新传感器数据
+     * 2. 查询 plant_data 表获取最新传感器数据（剔除脏数据）
      *
      * @param deviceId 设备 MAC 地址
      * @return 设备最新状态响应
@@ -39,9 +39,11 @@ public class SensorService {
                 deviceId
         );
 
-        // 查询最新传感器数据
+        // 查询最新传感器数据（剔除 temperature 和 air_humidity 为 0 的脏数据）
         LatestDataResponse.SensorData latestData = jdbcTemplate.queryForObject(
-                "SELECT timestamp, temperature, air_humidity, dirt_humidity FROM plant_data WHERE device_id = ? ORDER BY timestamp DESC LIMIT 1",
+                "SELECT timestamp, temperature, air_humidity, dirt_humidity FROM plant_data " +
+                        "WHERE device_id = ? AND temperature != 0 AND air_humidity != 0 " +
+                        "ORDER BY timestamp DESC LIMIT 1",
                 (rs, rowNum) -> mapSensorData(rs),
                 deviceId
         );
@@ -52,6 +54,7 @@ public class SensorService {
     /**
      * 拉取历史传感器数据 (图表数据源)
      * 默认仅查询今日数据（使用 create_time 字段判断）
+     * 剔除 temperature 和 air_humidity 为 0 的脏数据
      *
      * @param deviceId  设备 ID
      * @param startTime 查询起始时间戳 (秒级)，可选
@@ -60,7 +63,8 @@ public class SensorService {
      */
     public HistoryDataResponse getHistoryData(String deviceId, Long startTime, Long endTime) {
         StringBuilder sql = new StringBuilder(
-                "SELECT id, timestamp, temperature, air_humidity, dirt_humidity FROM plant_data WHERE device_id = ?"
+                "SELECT id, timestamp, temperature, air_humidity, dirt_humidity FROM plant_data " +
+                        "WHERE device_id = ? AND temperature != 0 AND air_humidity != 0"
         );
         List<Object> params = new ArrayList<>();
         params.add(deviceId);
