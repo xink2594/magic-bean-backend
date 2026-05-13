@@ -5,12 +5,15 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationP
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.MultiModalMessage;
 import com.alibaba.dashscope.common.Role;
+import com.example.magicbeanbackend.dto.PlantAnalysisResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class VisionAnalysisService {
@@ -24,7 +27,14 @@ public class VisionAnalysisService {
     @Value("${alibaba.ai.default-plant-prompt}")
     private String defaultPrompt;
 
-    public String analyzeImage(String imageUrl, String userPrompt) throws Exception {
+    /**
+     * 分析植物图片并返回结构化结果
+     *
+     * @param imageUrl  图片 URL
+     * @param userPrompt 用户自定义提示词（可选）
+     * @return 结构化的分析结果
+     */
+    public PlantAnalysisResponse analyzeImage(String imageUrl, String userPrompt) throws Exception {
         // 1. 决定最终的 Prompt：如果用户未传入，则使用配置文件中的默认提示词
         String finalPrompt = StringUtils.hasText(userPrompt) ? userPrompt : defaultPrompt;
 
@@ -50,6 +60,45 @@ public class VisionAnalysisService {
         MultiModalConversationResult result = conv.call(param);
 
         // 6. 从返回的复杂 JSON 结构中提取最终的文本内容
-        return (String) result.getOutput().getChoices().get(0).getMessage().getContent().get(0).get("text");
+        String rawText = (String) result.getOutput().getChoices().get(0).getMessage().getContent().get(0).get("text");
+
+        // 7. 解析结构化数据并返回
+        return parseAnalysisResult(rawText);
+    }
+
+    /**
+     * 解析 AI 返回的文本，提取结构化数据
+     * 格式：
+     * 植物品种：[...]
+     * 长势分析：[...]
+     * 培养建议：[...]
+     */
+    private PlantAnalysisResponse parseAnalysisResult(String rawText) {
+        String plantVariety = extractField(rawText, "植物品种[：:]\\s*(.+?)(?=\\n|$)");
+        String growthAnalysis = extractField(rawText, "长势分析[：:]\\s*(.+?)(?=\\n|$)");
+        String cultivationAdvice = extractField(rawText, "培养建议[：:]\\s*(.+?)(?=\\n|$)");
+
+        // 如果解析失败，返回原始文本作为长势分析
+        if (plantVariety == null && growthAnalysis == null && cultivationAdvice == null) {
+            return new PlantAnalysisResponse("未知", rawText, "无法解析建议");
+        }
+
+        return new PlantAnalysisResponse(
+                plantVariety != null ? plantVariety : "未知",
+                growthAnalysis != null ? growthAnalysis : "无法解析",
+                cultivationAdvice != null ? cultivationAdvice : "无法解析"
+        );
+    }
+
+    /**
+     * 使用正则表达式提取指定字段的内容
+     */
+    private String extractField(String text, String regex) {
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return null;
     }
 }
