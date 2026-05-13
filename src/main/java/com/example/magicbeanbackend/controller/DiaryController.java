@@ -1,6 +1,7 @@
 package com.example.magicbeanbackend.controller;
 
 import com.example.magicbeanbackend.common.ApiResponse;
+import com.example.magicbeanbackend.dto.DiaryDetailResponse;
 import com.example.magicbeanbackend.dto.DiaryListResponse;
 import com.example.magicbeanbackend.dto.DiarySaveRequest;
 import com.example.magicbeanbackend.service.DiaryService;
@@ -25,8 +26,8 @@ public class DiaryController {
     }
 
     /**
-     * 获取手记画廊列表
-     * 用于 App 的"画廊"或"时间轴"页面，展示历史照片及其伴随的环境指标
+     * 获取手记画廊列表（精简版，只返回 id 和 imageUrl）
+     * 用于 App 的"画廊"或"时间轴"页面展示
      *
      * @param deviceId 设备 ID
      * @param limit    返回记录条数，默认 20
@@ -38,6 +39,26 @@ public class DiaryController {
             @RequestParam(defaultValue = "20") int limit) {
         DiaryListResponse response = diaryService.getDiaryList(deviceId, limit);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 获取手记详情
+     * 用户点击某张照片后查看完整信息
+     *
+     * @param deviceId 设备 ID
+     * @param id       记录主键 ID
+     * @return 手记详情响应
+     */
+    @GetMapping("/detail")
+    public ResponseEntity<ApiResponse<DiaryDetailResponse>> getDiaryDetail(
+            @RequestParam String deviceId,
+            @RequestParam Long id) {
+        DiaryDetailResponse response = diaryService.getDiaryDetail(deviceId, id);
+        if (response != null) {
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } else {
+            return ResponseEntity.ok(ApiResponse.fail(404, "未找到对应的日记记录"));
+        }
     }
 
     /**

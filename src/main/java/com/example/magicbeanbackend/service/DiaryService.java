@@ -1,5 +1,6 @@
 package com.example.magicbeanbackend.service;
 
+import com.example.magicbeanbackend.dto.DiaryDetailResponse;
 import com.example.magicbeanbackend.dto.DiaryListResponse;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,7 @@ public class DiaryService {
     }
 
     /**
-     * 获取手记画廊列表
+     * 获取手记画廊列表（精简版，只返回 id 和 imageUrl）
      * 按 timestamp 倒序排列，过滤掉已删除的记录
      *
      * @param deviceId 设备 ID
@@ -32,17 +33,39 @@ public class DiaryService {
      */
     public DiaryListResponse getDiaryList(String deviceId, int limit) {
         List<DiaryListResponse.DiaryRecord> records = jdbcTemplate.query(
-                "SELECT id, timestamp, image_url, temperature, air_humidity, dirt_humidity, note " +
-                        "FROM plant_diary " +
+                "SELECT id, image_url FROM plant_diary " +
                         "WHERE device_id = ? AND (is_deleted IS NULL OR is_deleted = 0) " +
                         "ORDER BY timestamp DESC " +
                         "LIMIT ?",
-                (rs, rowNum) -> mapDiaryRecord(rs),
+                (rs, rowNum) -> new DiaryListResponse.DiaryRecord(
+                        rs.getLong("id"),
+                        rs.getString("image_url")
+                ),
                 deviceId,
                 limit
         );
 
         return new DiaryListResponse(records);
+    }
+
+    /**
+     * 获取手记详情
+     *
+     * @param deviceId 设备 ID
+     * @param id       记录主键 ID
+     * @return 手记详情，不存在则返回 null
+     */
+    public DiaryDetailResponse getDiaryDetail(String deviceId, Long id) {
+        List<DiaryDetailResponse> results = jdbcTemplate.query(
+                "SELECT id, timestamp, image_url, temperature, air_humidity, dirt_humidity, note " +
+                        "FROM plant_diary " +
+                        "WHERE device_id = ? AND id = ? AND (is_deleted IS NULL OR is_deleted = 0)",
+                this::mapDiaryDetail,
+                deviceId,
+                id
+        );
+
+        return results.isEmpty() ? null : results.get(0);
     }
 
     /**
@@ -64,10 +87,10 @@ public class DiaryService {
     }
 
     /**
-     * 映射日记记录对象
+     * 映射日记详情对象
      */
-    private DiaryListResponse.DiaryRecord mapDiaryRecord(ResultSet rs) throws SQLException {
-        return new DiaryListResponse.DiaryRecord(
+    private DiaryDetailResponse mapDiaryDetail(ResultSet rs, int rowNum) throws SQLException {
+        return new DiaryDetailResponse(
                 rs.getLong("id"),
                 rs.getLong("timestamp"),
                 rs.getString("image_url"),
