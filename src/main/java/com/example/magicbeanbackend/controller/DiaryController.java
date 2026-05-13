@@ -1,0 +1,59 @@
+package com.example.magicbeanbackend.controller;
+
+import com.example.magicbeanbackend.common.ApiResponse;
+import com.example.magicbeanbackend.dto.DiaryListResponse;
+import com.example.magicbeanbackend.dto.DiarySaveRequest;
+import com.example.magicbeanbackend.service.DiaryService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 植物手记控制器
+ * 提供植物日记与画廊相关接口
+ */
+@Validated
+@RestController
+@RequestMapping("/api/diary")
+public class DiaryController {
+
+    private final DiaryService diaryService;
+
+    public DiaryController(DiaryService diaryService) {
+        this.diaryService = diaryService;
+    }
+
+    /**
+     * 获取手记画廊列表
+     * 用于 App 的"画廊"或"时间轴"页面，展示历史照片及其伴随的环境指标
+     *
+     * @param deviceId 设备 ID
+     * @param limit    返回记录条数，默认 20
+     * @return 手记列表响应
+     */
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponse<DiaryListResponse>> getDiaryList(
+            @RequestParam String deviceId,
+            @RequestParam(defaultValue = "20") int limit) {
+        DiaryListResponse response = diaryService.getDiaryList(deviceId, limit);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 保存/编辑手记内容
+     * 用户在 App 画廊中点击某张由设备自动拍下的照片，为其补充文字心得
+     *
+     * @param request 包含 id 和 note 的请求体
+     * @return 操作结果
+     */
+    @PostMapping("/save")
+    public ResponseEntity<ApiResponse<Void>> saveDiary(@Valid @RequestBody DiarySaveRequest request) {
+        boolean success = diaryService.saveDiary(request.id(), request.note());
+        if (success) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        } else {
+            return ResponseEntity.ok(ApiResponse.fail(404, "未找到对应的日记记录"));
+        }
+    }
+}
