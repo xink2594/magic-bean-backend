@@ -10,6 +10,12 @@ public record DiarySaveRequest(
         @NotNull(message = "id 不能为空")
         Long id,
 
-        String note
+        String note,
+
+        Double temperature,
+
+        Double airHumidity,
+
+        Double dirtHumidity
 ) {
 }

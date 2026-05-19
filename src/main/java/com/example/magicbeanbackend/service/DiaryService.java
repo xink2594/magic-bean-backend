@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 植物手记服务
@@ -87,20 +88,69 @@ public class DiaryService {
 
     /**
      * 保存/编辑手记内容
-     * 根据 id 主键更新 plant_diary 表中的 note 字段
+     * 根据 id 主键更新 plant_diary 表中的 note 和传感器字段
+     * 传感器字段为 null 时默认设为 0
      *
-     * @param id   记录主键 ID
-     * @param note 手记文字内容
+     * @param id            记录主键 ID
+     * @param note          手记文字内容
+     * @param temperature   温度（默认 0）
+     * @param airHumidity   空气湿度（默认 0）
+     * @param dirtHumidity  土壤湿度（默认 0）
      * @return 更新是否成功
      */
     @Transactional
-    public boolean saveDiary(Long id, String note) {
+    public boolean saveDiary(Long id, String note, Double temperature, Double airHumidity, Double dirtHumidity) {
+        double temp = temperature != null ? temperature : 0;
+        double air = airHumidity != null ? airHumidity : 0;
+        double dirt = dirtHumidity != null ? dirtHumidity : 0;
+
         int updated = jdbcTemplate.update(
-                "UPDATE plant_diary SET note = ?, update_time = NOW() WHERE id = ?",
+                "UPDATE plant_diary SET note = ?, temperature = ?, air_humidity = ?, dirt_humidity = ?, update_time = NOW() WHERE id = ?",
                 note,
+                temp,
+                air,
+                dirt,
                 id
         );
         return updated > 0;
+    }
+
+    /**
+     * 新增手记
+     * 后端自动查询 plant_data 获取设备最新温湿度，生成当前时间戳
+     *
+     * @param deviceId  设备 ID
+     * @param imageUrl  图片 URL
+     * @param note      手记文字内容（可选）
+     * @return 新增是否成功
+     */
+    @Transactional
+    public boolean createDiary(String deviceId, String imageUrl, String note) {
+        // 查询设备最新传感器数据
+        Map<String, Object> sensorData = jdbcTemplate.queryForMap(
+                "SELECT temperature, air_humidity, dirt_humidity FROM plant_data " +
+                        "WHERE device_id = ? AND temperature != 0 AND air_humidity != 0 " +
+                        "ORDER BY timestamp DESC LIMIT 1",
+                deviceId
+        );
+
+        double temperature = ((Number) sensorData.get("temperature")).doubleValue();
+        double airHumidity = ((Number) sensorData.get("air_humidity")).doubleValue();
+        double dirtHumidity = ((Number) sensorData.get("dirt_humidity")).doubleValue();
+        long timestamp = System.currentTimeMillis();
+
+        int inserted = jdbcTemplate.update(
+                "INSERT INTO plant_diary (device_id, timestamp, temperature, air_humidity, dirt_humidity, image_url, note) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                deviceId,
+                timestamp,
+                temperature,
+                airHumidity,
+                dirtHumidity,
+                imageUrl,
+                note
+        );
+        return inserted > 0;
     }
 
     /**

@@ -63,6 +63,23 @@ public class DiaryController {
     }
 
     /**
+     * 新增手记
+     * App 端手动上传照片和笔记，后端自动补全温湿度数据
+     *
+     * @param request 包含 deviceId、imageUrl、note 的请求体
+     * @return 操作结果
+     */
+    @PostMapping("/create")
+    public ResponseEntity<ApiResponse<Void>> createDiary(@Valid @RequestBody DiaryCreateRequest request) {
+        boolean success = diaryService.createDiary(request.deviceId(), request.imageUrl(), request.note());
+        if (success) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        } else {
+            return ResponseEntity.ok(ApiResponse.fail(500, "新增手记失败"));
+        }
+    }
+
+    /**
      * 保存/编辑手记内容
      * 用户在 App 画廊中点击某张由设备自动拍下的照片，为其补充文字心得
      *
@@ -71,7 +88,7 @@ public class DiaryController {
      */
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<Void>> saveDiary(@Valid @RequestBody DiarySaveRequest request) {
-        boolean success = diaryService.saveDiary(request.id(), request.note());
+        boolean success = diaryService.saveDiary(request.id(), request.note(), request.temperature(), request.airHumidity(), request.dirtHumidity());
         if (success) {
             return ResponseEntity.ok(ApiResponse.success(null));
         } else {
