@@ -77,16 +77,20 @@ public class VisionAnalysisService {
         String plantVariety = extractField(rawText, "植物品种[：:]\\s*(.+?)(?=\\n|$)");
         String growthAnalysis = extractField(rawText, "长势分析[：:]\\s*(.+?)(?=\\n|$)");
         String cultivationAdvice = extractField(rawText, "培养建议[：:]\\s*(.+?)(?=\\n|$)");
+        String lightAdvice = extractField(rawText, "补光建议[：:]\\s*(.+?)(?=\\n|$)");
+        String waterAdvice = extractField(rawText, "补水建议[：:]\\s*(.+?)(?=\\n|$)");
 
         // 如果解析失败，返回原始文本作为长势分析
         if (plantVariety == null && growthAnalysis == null && cultivationAdvice == null) {
-            return new PlantAnalysisResponse("未知", rawText, "无法解析建议");
+            return new PlantAnalysisResponse("未知", rawText, "暂无", "暂无", "暂无");
         }
 
         return new PlantAnalysisResponse(
                 plantVariety != null ? plantVariety : "未知",
-                growthAnalysis != null ? growthAnalysis : "无法解析",
-                cultivationAdvice != null ? cultivationAdvice : "无法解析"
+                growthAnalysis != null ? growthAnalysis : "暂无",
+                cultivationAdvice != null ? cultivationAdvice : "暂无",
+                lightAdvice != null ? lightAdvice : "暂无",
+                waterAdvice != null ? waterAdvice : "暂无"
         );
     }
 

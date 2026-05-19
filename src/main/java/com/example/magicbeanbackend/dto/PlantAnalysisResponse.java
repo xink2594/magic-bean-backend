@@ -7,6 +7,8 @@ package com.example.magicbeanbackend.dto;
 public record PlantAnalysisResponse(
         String plantVariety,      // 植物品种
         String growthAnalysis,    // 长势分析
-        String cultivationAdvice  // 培养建议
+        String cultivationAdvice, // 培养建议
+        String lightAdvice,       // 补光建议
+        String waterAdvice        // 补水建议
 ) {
 }
