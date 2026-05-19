@@ -137,7 +137,7 @@ public class DiaryService {
         double temperature = ((Number) sensorData.get("temperature")).doubleValue();
         double airHumidity = ((Number) sensorData.get("air_humidity")).doubleValue();
         double dirtHumidity = ((Number) sensorData.get("dirt_humidity")).doubleValue();
-        long timestamp = System.currentTimeMillis();
+        long timestamp = System.currentTimeMillis() / 1000;
 
         int inserted = jdbcTemplate.update(
                 "INSERT INTO plant_diary (device_id, timestamp, temperature, air_humidity, dirt_humidity, image_url, note) " +
